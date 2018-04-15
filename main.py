@@ -8,7 +8,7 @@ sh = logging.StreamHandler()
 sh.setLevel(logging.DEBUG)
 #sh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s'))
 log.addHandler(sh)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 log.debug("Started logger")
 
 
@@ -18,12 +18,15 @@ m.gen(10)
 pc = player.Player()
 pc.level_up(5)
 entity.player_uuid = pc.uuid
+here = m.grid[pc.pos]
 
 def main():
+    global here
     while True:
+        here = m.grid[pc.pos]
         print(pc.pos)
         print(m.show2d(*pc.pos))
-        print(m.grid[pc.pos].look())
+        print(here.look())
         dirs = list(m.get_dirs(*pc.pos))
         names = map(lambda x: cellmap.dir_name(*x), dirs)
         print(", ".join(names))
@@ -38,27 +41,56 @@ def go(v):
         print("can't go that way ({})".format(choice))
 
 def get(v):
-    print("not yet")
+    t = target(v, cls=entity.Item)
+    if t:
+        pc.get(t)
+        here.remove(t)
+        print("You pick up {}".format(t))
+    else:
+        if v:
+            print("I don't see {} here".format(v))
+        else:
+            print("There's nothing to get")
 
 def attack(v):
-    ents = list(e for e in m.grid[pc.pos].entities if isinstance(e, entity.Character))
+    t = target(v, cls=entity.Character)
+    if t:
+        pc.attack(t)
+    else:
+        print("Who?")
+
+def look_self(v):
+    print(pc.look())
+
+def look(v):
+    t = target(v)
+    if t:
+        print(t.look())
+    else:
+        print("At what?")
+
+def target(name, cls=None):
+    if cls:
+        ents = list(e for e in m.grid[pc.pos].entities if isinstance(e, cls))
+    else:
+        ents = list(e for e in m.grid[pc.pos].entities)
+
     if len(ents) == 0:
-        print("No one here")
+        return False
     elif len(ents) == 1:
-        print("You attack {}!".format(ents[0]))
-        pc.attack(ents[0])
+        return ents[0]
     else:
         for e in ents:
-            if v in e.name.upper():
-                print("You attack {}!".format(e))
-                pc.attack(e)
-                return
-        print("Who?")
+            if name in e.name.upper():
+                return e
+        return False
 
 commands = {
     'GO': go,
     'GET': get,
-    'ATTACK': attack
+    'ATTACK': attack,
+    'SELF': look_self,
+    'LOOK': look
 }
 
 def read_command():

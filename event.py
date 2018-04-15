@@ -134,4 +134,6 @@ def react(kwargs):
 def gasp(kwargs):
     print("OH NO IT HIT ME!")
 
-
+@on("")
+def dbg_event(k):
+    L.debug("{}".format(k))

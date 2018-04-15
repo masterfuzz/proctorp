@@ -19,19 +19,25 @@ class Entity(object):
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, self.name)
 
+    def look(self):
+        return self.name
+
 class LeveledEntity(Entity):
     def __init__(self, name="<Unknown>", level=1):
         self.lvl = level
         super(LeveledEntity,self).__init__(name)
+
+    def look(self):
+        return str(self)
 
     def level(self, level):
         self.lvl = level
         return self
 
     def level_up(self, to):
+        by = to - self.lvl
         self.lvl = to
         #print("{} leveled up!".format(self))
-        by = to - self.lvl
         for k, x in self.__dict__.items():
             if isinstance(x, Attrib):
                 x.level_up(by)
@@ -43,7 +49,8 @@ class LeveledEntity(Entity):
         return "Level {} {}".format(self.lvl, self.name)
 
 class Item(LeveledEntity):
-    pass
+    def look(self):
+        return "A Level {} {}".format(self.lvl, self.name)
 
 class Treasure(Item):
     def __init__(self, name="Treasure", level=1):
@@ -67,6 +74,9 @@ class Weapon(Item):
         self.power += to - self.lvl
         return self
 
+    def look(self):
+        return super(Weapon,self).look() + "\nPower: {}".format(self.pwr)
+
 class Attrib:
     def __init__(self, val, growth=5):
         self.min = 0
@@ -75,6 +85,8 @@ class Attrib:
         self.growth = growth
         self.uuid = uuid.uuid1()
 
+    def full(self):
+        return self.val == self.max
 
     def level_up(self, by):
         self.val += by * self.growth
@@ -109,11 +121,16 @@ class Character(LeveledEntity):
         self.weapon = None
         self.ai_hostile = False
         self.dead = False
+        self.inv = []
 
         event.when("combat.attack", {'target': self.uuid})(self.attacked)
         event.when("attribute.value.changed", {'target': self.hp.uuid,
                                                'new_value': 0})(self.die)
 
+    @event.trigger("character.inventory.get")
+    def get(self, item):
+        self.inv.append(item)
+        return {'target': item.uuid, 'source': self.uuid}
 
     def die(self, kwargs):
         if not self.dead:
@@ -124,6 +141,23 @@ class Character(LeveledEntity):
     def __str__(self):
         dstr = ", dead" if self.dead else ""
         return "{} (Level {}{})".format(self.name, self.lvl, dstr)
+
+    def look(self):
+        desc = str(self) + "\n"
+        if self.ai_hostile:
+            desc += "Hostile\n"
+        for k,v in self._attribs().items():
+            if v.full():
+                desc += "{}: {}\n".format(k, v.val)
+            else:
+                desc += "{}: {}/{}\n".format(k, v.val, v.max)
+        desc += "Weilding: {}\n".format(self.weapon)
+        if self.inv:
+            desc += "Inventory: " + ", ".join(map(str, self.inv)) + "\n"
+        return desc
+
+    def _attribs(self):
+        return {k: v for k,v in self.__dict__.items() if isinstance(v, Attrib)}
 
     def hostile(self, yes=True):
         self.ai_hostile = yes
@@ -157,11 +191,6 @@ class Character(LeveledEntity):
     def equip(self, w):
         self.weapon = w
         return self
-
-class JobCharacter(Character):
-    def __init__(self, name, level=1, job=None):
-        self.job = job
-        super(JobCharacter,self).__init__(name, level)
 
 class NPC(Character):
     def __init__(self, name, level=1):
