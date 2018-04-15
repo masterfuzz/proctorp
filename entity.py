@@ -26,8 +26,7 @@ class Entity(object):
 class LeveledEntity(Entity):
     def __init__(self, name="<Unknown>", level=1):
         super(LeveledEntity,self).__init__(name)
-        self.lvl = level
-        self.xp = 100*(2**(self.lvl-2))
+        self.level(level)
 
     def look(self):
         return str(self)
@@ -49,12 +48,10 @@ class LeveledEntity(Entity):
 
     def level_up(self, to):
         by = to - self.lvl
-        self.lvl = to
-        #print("{} leveled up!".format(self))
+        self.level(to)
         for k, x in self.__dict__.items():
             if isinstance(x, Attrib):
                 x.level_up(by)
-                print("{}: {}".format(k,x))
 
         return self
 
@@ -168,11 +165,26 @@ class Character(LeveledEntity):
             event.log("character.inventory.drop", item=i, pos=self.pos)
         self.inv = []
 
+    def drop(self, item):
+        for i,v in enumerate(self.inv):
+            if item.uuid == v.uuid:
+                del self.inv[i]
+                event.log("character.inventory.drop", item=item, pos=self.pos)
+                return
+
+    # remove without dropping
+    def remove_item(self, item):
+        for i,v in enumerate(self.inv):
+            if item.uuid == v.uuid:
+                del self.inv[i]
+                return
+
     @event.trigger("character.inventory.equip")
     def equip(self, i):
         if self.weapon:
             self.unequip()
         self.weapon = i
+        self.remove_item(i)
         return {'sub': self.uuid, 'obj': i.uuid}
 
     @event.trigger("character.inventory.unequip")
@@ -198,6 +210,7 @@ class Character(LeveledEntity):
                 desc += "{}: {}\n".format(k, v.val)
             else:
                 desc += "{}: {}/{}\n".format(k, v.val, v.max)
+        desc += "{}/{} XP\n".format(self.xp, 100*(2**(self.lvl-1)))
         desc += "Weilding: {}\n".format(self.weapon)
         if self.inv:
             desc += "Inventory: " + ", ".join(map(str, self.inv)) + "\n"
@@ -210,10 +223,9 @@ class Character(LeveledEntity):
         self.ai_hostile = yes
         return self
 
-    @event.trigger("combad.damage")
+    @event.trigger("combat.damage")
     def take_dmg(self, dmg):
         dmg = max(1, dmg - self.df.val)
-        print("{}: Ouch! (-{} HP)".format(self.name, dmg))
         self.hp.damage(dmg)
         return {'sub': self.uuid, 'amount': dmg}
 
@@ -276,11 +288,4 @@ class MOB(Character):
     def on_encounter(self, k):
         if not self.dead:
             self.attack(player_uuid)
-
-@event.on("combat.attack")
-def combat_log_attack(k):
-    global all_entities
-    sub = all_entities[k['sub']]
-    obj = all_entities[k['obj']]
-    print("{} attacked {}!".format(sub, obj))
 

@@ -11,7 +11,8 @@ entities = [
     Treasure().level(5).add(Weapon("Staff")),
     MOB("Gnoll"),
     MOB("Gnoll"),
-    MOB("Gnoll")
+    MOB("Gnoll"),
+    MOB("Overlord").level_up(20)
 ]
 
 

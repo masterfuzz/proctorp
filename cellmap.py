@@ -1,5 +1,8 @@
 import random
 import entities
+import logging
+L = logging.getLogger('map')
+L.addHandler(logging.NullHandler())
 
 class Map:
     def __init__(self):
@@ -13,13 +16,13 @@ class Map:
             fs = self.free_space(*c)
             if fs:
                 c = rand_neighbor(*c, opts=fs)
-                print("new cell @{}".format(c))
+                L.debug("new cell @{}".format(c))
                 new_cell = Cell.rand()
                 new_cell.pos = c
                 self.grid[c] = new_cell
                 self.cells.append(new_cell)
             else:
-                print('no free space at {}'.format(c))
+                L.debug('no free space at {}'.format(c))
                 c = random.choice(self.cells).pos
         for c in self.cells:
             for n in self.get_dirs(*c.pos):
@@ -27,7 +30,7 @@ class Map:
 
         for e in entities.entities:
             c = random.choice(self.cells)
-            print("{} placed at {}".format(e, c.pos))
+            L.debug("{} placed at {}".format(e, c.pos))
             c.populate(e)
 
     def has_neighbor(self, px,py,pz, nx,ny,nz):
@@ -104,14 +107,14 @@ def dir_name(x,y,z):
     if y == 1:
         d += 'NORTH'
     if x == -1:
-        d += 'WEST'
+        d += ' WEST'
     if x == 1:
-        d += 'EAST'
+        d += ' EAST'
     if z == -1:
-        d += ' (DOWN)'
+        d += ' DOWN'
     if z == 1:
-        d += ' (UP)'
-    return d
+        d += ' UP'
+    return d.strip()
 
 class Cell:
     def __init__(self):
