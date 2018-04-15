@@ -130,6 +130,13 @@ class Cell:
         c.terrain = random.choice(("Grassland", "Mountains", "Forest", "River"))
         return c
 
+    def remove(self, e):
+        for i in range(len(self.entities)):
+            if e.uuid == self.entities[i].uuid:
+                del self.entities[i]
+                return
+
+
     def populate(self, *e):
         self.entities += e
 
