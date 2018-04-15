@@ -12,6 +12,7 @@ class Entity(object):
         self.ai = False
         self.uuid = uuid.uuid1()
         all_entities[self.uuid] = self
+        self.pos = (0,0,0)
 
     def __str__(self):
         return self.name
@@ -24,14 +25,26 @@ class Entity(object):
 
 class LeveledEntity(Entity):
     def __init__(self, name="<Unknown>", level=1):
-        self.lvl = level
         super(LeveledEntity,self).__init__(name)
+        self.lvl = level
+        self.xp = 100*(2**(self.lvl-2))
 
     def look(self):
         return str(self)
 
+    @event.trigger("entity.xp.gain")
+    def gain_xp(self, amt):
+        self.xp += amt
+        lvl = self.lvl
+        while 100*(2**(lvl-1)) < self.xp:
+            lvl+=1
+        if lvl > self.lvl:
+            self.level_up(lvl)
+        return {'sub': self.uuid, 'amount': amt}
+
     def level(self, level):
         self.lvl = level
+        self.xp = 100*(2**(level-2))
         return self
 
     def level_up(self, to):
@@ -104,12 +117,12 @@ class Attrib:
     @event.trigger("attribute.value.changed")
     def damage(self, v):
         self.val = max(self.min, self.val - v)
-        return {'target': self.uuid, 'new_value': self.val}
+        return {'obj': self.uuid, 'new_value': self.val}
 
     @event.trigger("attribute.value.changed")
     def heal(self, v):
         self.val = min(self.max, self.val + v)
-        return {'target': self.uuid, 'new_value': self.val}
+        return {'obj': self.uuid, 'new_value': self.val}
 
 class Character(LeveledEntity):
     def __init__(self, name, level=1):
@@ -117,26 +130,60 @@ class Character(LeveledEntity):
         self.hp = Attrib(10 * level, 10)
         self.st = Attrib(5 * level, 5)
         self.df = Attrib(5 * level, 5)
-        self.xp = Attrib(100 * level, 100)
         self.weapon = None
         self.ai_hostile = False
+        self.ai_neutral = True # becomes hostile
         self.dead = False
         self.inv = []
+        self.last_hit = None
 
-        event.when("combat.attack", {'target': self.uuid})(self.attacked)
-        event.when("attribute.value.changed", {'target': self.hp.uuid,
+        event.when("combat.attack", {'obj': self.uuid})(self.attacked)
+        event.when("attribute.value.changed", {'obj': self.hp.uuid,
                                                'new_value': 0})(self.die)
+        event.when("character.death", {'last_hit': self.uuid})(self.combat_xp)
 
     @event.trigger("character.inventory.get")
     def get(self, item):
         self.inv.append(item)
-        return {'target': item.uuid, 'source': self.uuid}
+        return {'obj': item.uuid, 'sub': self.uuid}
+
 
     def die(self, kwargs):
         if not self.dead:
+            self.drop_all()
             print("{} died!".format(self.name))
             self.dead = True
-            event.log("character.death", target=self.uuid)
+            event.log("character.death", sub=self.uuid, last_hit=self.last_hit)
+
+    def combat_xp(self, k):
+        if self.dead:
+            return
+        # xp gain = level * 50
+        e = all_entities[k['sub']]
+        self.gain_xp(e.lvl * 50)
+
+    def drop_all(self):
+        self.unequip()
+        for i in self.inv:
+            event.log("character.inventory.drop", item=i, pos=self.pos)
+        self.inv = []
+
+    @event.trigger("character.inventory.equip")
+    def equip(self, i):
+        if self.weapon:
+            self.unequip()
+        self.weapon = i
+        return {'sub': self.uuid, 'obj': i.uuid}
+
+    @event.trigger("character.inventory.unequip")
+    def unequip(self):
+        if self.weapon:
+            wpn = self.weapon
+            self.inv.append(wpn)
+            self.weapon = None
+            return {'sub': self.uuid, 'obj': wpn}
+        else:
+            return {'_block': True}
 
     def __str__(self):
         dstr = ", dead" if self.dead else ""
@@ -163,24 +210,28 @@ class Character(LeveledEntity):
         self.ai_hostile = yes
         return self
 
+    @event.trigger("combad.damage")
     def take_dmg(self, dmg):
+        dmg = max(1, dmg - self.df.val)
         print("{}: Ouch! (-{} HP)".format(self.name, dmg))
         self.hp.damage(dmg)
-        return self
+        return {'sub': self.uuid, 'amount': dmg}
 
     @event.trigger("combat.attack")
-    def attack(self, target):
+    def attack(self, obj):
         if self.dead:
             print("{} can't attack! (dead)".format(self.name))
             return {'_block': True}
-        if isinstance(target, Entity):
-            target = target.uuid
-        return {'source': self.uuid, 'target': target, 'damage': self.deal_melee()}
+        if isinstance(obj, Entity):
+            obj = obj.uuid
+        return {'sub': self.uuid, 'obj': obj, 'damage': self.deal_melee()}
 
     def attacked(self, kwargs):
-        self.take_dmg(kwargs.get('damage',0))
-        if self.ai_hostile and not self.dead:
-            self.attack(kwargs['source'])
+        if not self.dead:
+            self.last_hit = kwargs.get('sub')
+            self.take_dmg(kwargs.get('damage',0))
+            if self.ai_neutral:
+                self.ai_hostile = True
 
     def deal_melee(self):
         if self.weapon:
@@ -188,7 +239,7 @@ class Character(LeveledEntity):
         else:
             return self.st.val
 
-    def equip(self, w):
+    def wielding(self, w):
         self.weapon = w
         return self
 
@@ -208,6 +259,8 @@ class NPC(Character):
         return self
 
     def say(self, k):
+        if self.dead:
+            return
         if self.unprompts:
             print("{}: {}".format(self.name, random.choice(self.unprompts)))
         else:
@@ -227,7 +280,7 @@ class MOB(Character):
 @event.on("combat.attack")
 def combat_log_attack(k):
     global all_entities
-    sub = all_entities[k['source']]
-    obj = all_entities[k['target']]
+    sub = all_entities[k['sub']]
+    obj = all_entities[k['obj']]
     print("{} attacked {}!".format(sub, obj))
 

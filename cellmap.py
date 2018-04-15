@@ -138,6 +138,8 @@ class Cell:
 
 
     def populate(self, *e):
+        for x in e:
+            x.pos = self.pos
         self.entities += e
 
     def look(self):

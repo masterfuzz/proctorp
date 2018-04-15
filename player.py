@@ -1,3 +1,4 @@
+from __future__ import print_function
 import cellmap
 import entity
 import event
@@ -6,7 +7,9 @@ import event
 class Player(entity.Character):
     def __init__(self):
         super(Player, self).__init__(name="Player", level=1)
-        self.pos = (0,0,0)
+
+        event.when("entity.xp.gain", {'sub': self.uuid})(
+            lambda k: print("You gained {} XP!".format(k['amount'])))
 
     @event.trigger("player.movement")
     def go_dir(self, n):

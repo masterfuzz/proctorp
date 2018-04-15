@@ -46,6 +46,7 @@ def get(v):
         pc.get(t)
         here.remove(t)
         print("You pick up {}".format(t))
+        event.log("player.action.get")
     else:
         if v:
             print("I don't see {} here".format(v))
@@ -56,6 +57,7 @@ def attack(v):
     t = target(v, cls=entity.Character)
     if t:
         pc.attack(t)
+        event.log("player.action.attack")
     else:
         print("Who?")
 
@@ -103,11 +105,14 @@ def read_command():
     else:
         print("wat")
 
-@event.on("player.movement")
+@event.on("player.action")
 def main_ai(kwg):
     # do encounters
     ents = {e.uuid: True for e in m.grid[pc.pos].entities}
     event._log(event.Event("player.encounter", ents))
 
+@event.on("character.inventory.drop")
+def dropped_item(kwg):
+    m.grid[kwg['pos']].entities.append(kwg['item'])
 
 main()

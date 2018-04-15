@@ -120,20 +120,6 @@ class when:
         subscribe(self.path, check)
         return f
 
-
-@trigger("bad.thing")
-def evil():
-    print("EVIL FUNCTION!!")
-    return {'target': 'me'}
-
-@on("bad.thing")
-def react(kwargs):
-    print("evil thing happened!")
-
-@when("bad.thing", {'target': 'me'})
-def gasp(kwargs):
-    print("OH NO IT HIT ME!")
-
 @on("")
 def dbg_event(k):
     L.debug("{}".format(k))
