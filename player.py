@@ -11,7 +11,7 @@ class Player(entity.Character):
         event.when("entity.xp.gain", {'sub': self.uuid})(
             lambda k: print("You gained {} XP!".format(k['amount'])))
 
-    @event.trigger("player.movement")
+    @event.trigger("player.action.movement")
     def go_dir(self, n):
         self.pos = cellmap.add3d(self.pos, n)
         return {'new_pos': self.pos}

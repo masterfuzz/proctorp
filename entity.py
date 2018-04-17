@@ -13,6 +13,15 @@ class Entity(object):
         self.uuid = uuid.uuid1()
         all_entities[self.uuid] = self
         self.pos = (0,0,0)
+        self.tags = set((self.name,))
+
+    def tag(self, tag):
+        self.tags.add(tag)
+        return self
+
+    def untag(self, tag):
+        self.tags.remove(tag)
+        return self
 
     def __str__(self):
         return self.name
@@ -262,6 +271,9 @@ class NPC(Character):
         self.unprompts = []
 
         event.when("player.encounter", {self.uuid: True})(self.say)
+
+    def quest(self, give_txt, quest, compl_txt):
+        return self
 
     def dialog(self, txt, prompt=None):
         if prompt:

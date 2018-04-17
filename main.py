@@ -20,11 +20,14 @@ m.gen(10)
 pc = player.Player()
 #pc.level_up(5)
 pc.weapon = entity.Weapon("Super Sword").power(12035)
+pc.hp.val = 10000000
 entity.player_uuid = pc.uuid
 here = m.grid[pc.pos]
 colors.cprint("Done!\n")
 
 def main():
+    import combat_log
+    combat_log.pc = pc
     global here
     while True:
         here = m.grid[pc.pos]
@@ -122,38 +125,11 @@ def target(name, cls=None, inv=None):
     else:
         return False
 
-
-
-@event.on("player.action")
-def main_ai(kwg):
-    # do encounters
-    ents = {e.uuid: True for e in m.grid[pc.pos].entities}
-    event._log(event.Event("player.encounter", ents))
-
-@event.on("character.inventory.drop")
-def dropped_item(kwg):
-    m.grid[kwg['pos']].entities.append(kwg['item'])
-
-@event.on("combat.damage")
-def clog_damage(kwg):
-    sub = entity.all_entities[kwg['sub']]
-    hprint("{}: Ouch! (-{} HP)\n".format(sub.name, kwg['amount']))
-
-@event.on("combat.attack")
-def clog_attack(kwg):
-    sub = entity.all_entities[kwg['sub']]
-    obj = entity.all_entities[kwg['obj']]
-    hprint("{} attacks {}!\n".format(sub, obj))
-
 def pcprint(msg):
     colors.cprint(msg, color=colors.OKBLUE)
 
 def badcmd(msg):
     colors.cprint(msg, color=colors.WARNING)
-
-def hprint(msg):
-    colors.cprint(msg, color=colors.FAIL)
-
 
 def cmdhelp(v):
     msg = "Possible commands are:\n"
@@ -183,5 +159,15 @@ def read_command():
             commands[v[0]](None)
     else:
         badcmd("I don't understand that command\n")
+
+@event.on("player.action")
+def main_ai(kwg):
+    # do encounters
+    ents = {e.uuid: True for e in m.grid[pc.pos].entities}
+    event._log(event.Event("player.encounter", ents))
+
+@event.on("character.inventory.drop")
+def dropped_item(kwg):
+    m.grid[kwg['pos']].entities.append(kwg['item'])
 
 main()
