@@ -1,6 +1,6 @@
 import logging
 L = logging.getLogger('events')
-L.addHandler(logging.NullHandler())
+#L.addHandler(logging.NullHandler())
 
 class Event(object):
     def __init__(self, path=None, kwargs=None):

@@ -3,14 +3,13 @@ import player
 import entity
 import event
 import colors
-import logging
-log = logging.getLogger()
-sh = logging.StreamHandler()
-sh.setLevel(logging.DEBUG)
-#sh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s'))
-log.addHandler(sh)
-log.setLevel(logging.INFO)
-log.debug("Started logger")
+import logging as log
+#sh = logging.FileHandler("debug.log")
+log.basicConfig(format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
+                    level=log.DEBUG,
+                    filename="debug.log",
+                   )
+log.info("Started logger")
 
 
 colors.cprint("Loading map...\n")
