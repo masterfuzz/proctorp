@@ -24,19 +24,29 @@ entity.player_uuid = pc.uuid
 here = m.grid[pc.pos]
 colors.cprint("Done!\n")
 
+HOST = ''
+PORT = 5007
+
 def main():
+    import socket
     import combat_log
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    s.listen(1)
+    conn, addr = s.accept()
+    colors.write = conn.send
+    print 'Connected by', addr
     combat_log.pc = pc
     global here
     while True:
         here = m.grid[pc.pos]
-        print(pc.pos)
-        print(m.show2d(*pc.pos))
-        print(here.look())
+        #print(pc.pos)
+        #print(m.show2d(*pc.pos))
+        colors.cprint(here.look()+"\n")
         dirs = list(m.get_dirs(*pc.pos))
         names = map(lambda x: cellmap.dir_name(*x), dirs)
-        colors.cprint(", ".join(names)+"\n", color=colors.OKGREEN)
-        read_command()
+        colors.cprint(", ".join(names)+"\n\n> ", color=colors.OKGREEN)
+        read_command(conn)
 
 def go(v):
     dirs = list(m.get_dirs(*pc.pos))
@@ -65,7 +75,7 @@ def attack(v):
         pc.attack(t)
         event.log("player.action.attack")
     else:
-        badcmd("Who?\n")
+        badcmd("I don't see '{}' here.\n".format(v))
 
 def equip(v):
     t = target(v, cls=entity.Weapon, inv=True)
@@ -149,15 +159,15 @@ commands = {
     'HELP': cmdhelp
 }
 
-def read_command():
-    v = raw_input("> ").upper().split(' ', 1)
+def read_command(conn):
+    v = conn.recv(1024).strip().upper().split(' ', 1)
     if v[0] in commands:
         if len(v) > 1:
             commands[v[0]](v[1:][0])
         else:
             commands[v[0]](None)
     else:
-        badcmd("I don't understand that command\n")
+        badcmd("I don't understand that command.\nYou said: '{}'\n".format(v))
 
 @event.on("player.action")
 def main_ai(kwg):

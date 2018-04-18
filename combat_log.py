@@ -19,6 +19,9 @@ def clog_damage(kwg):
     sub = u(kwg['sub'])
     hprint("{}: Ouch! (-{} HP)\n".format(sub.name, kwg['amount']))
 
+@event.when("entity.xp.gain", {'sub': pc.uuid})
+def clog_xp_gain(k):
+    pcprint("You gained {} XP!\n".format(k['amount']))
 
 @event.on("quest.completed")
 def clog_quest_complete(k):

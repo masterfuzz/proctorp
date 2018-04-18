@@ -1,4 +1,4 @@
-import random
+#import random
 import event
 import uuid
 
@@ -157,7 +157,6 @@ class Character(LeveledEntity):
     def die(self, kwargs):
         if not self.dead:
             self.drop_all()
-            print("{} died!".format(self.name))
             self.dead = True
             event.log("character.death", sub=self.uuid, last_hit=self.last_hit)
 
@@ -241,7 +240,6 @@ class Character(LeveledEntity):
     @event.trigger("combat.attack")
     def attack(self, obj):
         if self.dead:
-            print("{} can't attack! (dead)".format(self.name))
             return {'_block': True}
         if isinstance(obj, Entity):
             obj = obj.uuid
@@ -286,9 +284,11 @@ class NPC(Character):
         if self.dead:
             return
         if self.unprompts:
-            print("{}: {}".format(self.name, random.choice(self.unprompts)))
+            pass
+            #L.debug("{}: {}".format(self.name, random.choice(self.unprompts)))
         else:
-            print("{}: ...".format(self.name))
+            pass
+            #L.debug("{}: ...".format(self.name))
 
 class MOB(Character):
     def __init__(self, name, level=1):
