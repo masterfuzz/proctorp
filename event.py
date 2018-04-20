@@ -45,9 +45,9 @@ class Hook:
 
     def __repr__(self):
         if self.full_path:
-            return "{}:<{}>".format(self.full_path, len(self.children))
+            return "{}:<{},{}>".format(self.full_path, len(self.methods), len(self.children))
         else:
-            return "{}:<{}>".format('.', len(self.children))
+            return "{}:<{},{}>".format('.', len(self.methods), len(self.children))
 
     def _invoke(self, path, e):
         for m in self.methods:

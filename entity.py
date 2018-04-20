@@ -13,14 +13,14 @@ class Entity(object):
         self.uuid = uuid.uuid1()
         all_entities[self.uuid] = self
         self.pos = (0,0,0)
-        self.tags = set((self.name,))
+        self.tags = set((self.name.upper(),))
 
     def tag(self, tag):
-        self.tags.add(tag)
+        self.tags.add(tag.upper())
         return self
 
     def untag(self, tag):
-        self.tags.remove(tag)
+        self.tags.remove(tag.upper())
         return self
 
     def __str__(self):
@@ -267,10 +267,12 @@ class NPC(Character):
         super(NPC,self).__init__(name, level)
         self.prompts = {}
         self.unprompts = []
+        self.quests = []
 
         event.when("player.encounter", {self.uuid: True})(self.say)
 
     def quest(self, give_txt, quest, compl_txt):
+        self.quests.append(quest)
         return self
 
     def dialog(self, txt, prompt=None):
