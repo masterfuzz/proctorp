@@ -5,6 +5,10 @@ import uuid
 all_entities = {}
 player_uuid = None
 
+def tags(e):
+    if isinstance(e, uuid.UUID):
+        e = all_entities[e]
+    return e.tags
 class Entity(object):
     def __init__(self, name="<Unknown>"):
         self.name = name
@@ -283,6 +287,9 @@ class NPC(Character):
         return self
 
     def say(self, k):
+        if self.quests:
+            for q in self.quests:
+                q.accept(k['sub'])
         if self.dead:
             return
         if self.unprompts:

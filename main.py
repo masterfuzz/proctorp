@@ -62,7 +62,7 @@ def get(v):
         pc.get(t)
         here.remove(t)
         pcprint("You pick up {}\n".format(t))
-        event.log("player.action.get")
+        event.log("player.action.get", sub=pc.uuid)
     else:
         if v:
             badcmd("I don't see {} here\n".format(v))
@@ -73,7 +73,7 @@ def attack(v):
     t = target(v, cls=entity.Character)
     if t:
         pc.attack(t)
-        event.log("player.action.attack")
+        event.log("player.action.attack", sub=pc.uuid)
     else:
         badcmd("I don't see '{}' here.\n".format(v))
 
@@ -81,14 +81,14 @@ def equip(v):
     t = target(v, cls=entity.Weapon, inv=True)
     if t:
         pc.equip(t)
-        event.log("player.action.equip")
+        event.log("player.action.equip", sub=pc.uuid)
     else:
         badcmd("Equip what?\n")
 
 def unequip(v):
     if pc.weapon:
         pc.unequip()
-        event.log("player.action.unequip")
+        event.log("player.action.unequip", sub=pc.uuid)
     else:
         badcmd("You're not holding a weapon\n")
 
@@ -98,7 +98,7 @@ def drop(v):
     t = target(v, inv=True)
     if t:
         pc.drop(t)
-        event.log("player.action.drop")
+        event.log("player.action.drop", sub=pc.uuid)
     else:
         badcmd("Drop what?\n")
 
@@ -173,6 +173,7 @@ def read_command(conn):
 def main_ai(kwg):
     # do encounters
     ents = {e.uuid: True for e in m.grid[pc.pos].entities}
+    ents['sub'] = kwg['sub']
     event._log(event.Event("player.encounter", ents))
 
 @event.on("character.inventory.drop")

@@ -11,5 +11,5 @@ class Player(entity.Character):
     @event.trigger("player.action.movement")
     def go_dir(self, n):
         self.pos = cellmap.add3d(self.pos, n)
-        return {'new_pos': self.pos}
+        return {'new_pos': self.pos, 'sub': self.uuid}
 

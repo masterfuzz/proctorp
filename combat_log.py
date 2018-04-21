@@ -25,14 +25,14 @@ def clog_xp_gain(k):
 
 @event.on("quest.completed")
 def clog_quest_complete(k):
-    quest = u(k['sub'])
+    quest = u(k['obj'])
     pc.gain_xp(quest.xp)
     pcprint("You completed the quest '{}'!\n+{} XP\n".format(quest.name,
                                                            quest.xp))
 
 @event.on("quest.accepted")
 def clog_quest_accept(k):
-    quest = u(k['sub'])
+    quest = u(k['obj'])
     pcprint("You accepted the quest '{}'!\n".format(quest.name))
 
 def hprint(msg):

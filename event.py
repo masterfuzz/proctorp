@@ -26,6 +26,12 @@ class Hook:
             self.full_path = path
         self.children = {}
 
+    def show_tree(self):
+        ret = [str(self)]
+        for c in self.children:
+            ret += self.children[c].show_tree()
+        return ret
+
     def subscribe(self, path, method):
         if path:
             if not path[0]:
