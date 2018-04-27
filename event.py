@@ -1,6 +1,10 @@
+from Queue import Queue
 import logging
+import threading
 L = logging.getLogger('events')
 #L.addHandler(logging.NullHandler())
+
+QUEUE = Queue()
 
 class Event(object):
     def __init__(self, path=None, kwargs=None):
@@ -66,6 +70,7 @@ class Hook:
                 self.children[path[0]]._invoke(path[1:], e)
 
 root_hook = Hook()
+para_hooks = {}
 
 def subscribe(path, method):
     root_hook.subscribe(path.split('.'), method)
@@ -73,12 +78,36 @@ def subscribe(path, method):
 def call_when(path, method, when):
     when(path, when)(method)
 
+KILL = 1827423
+def consume():
+    while True:
+        e = QUEUE.get()
+        if e == KILL or e.args.get('kill') == KILL:
+            L.debug("kill signal received. exiting")
+            return
+        root_hook.invoke(e)
+
+def start():
+    threading.Thread(target=consume).start()
+    L.debug("consume thread started")
+
+def stop():
+    QUEUE.put(KILL)
+
+def new_para(name):
+    if name in para_hooks:
+        raise Exception("name already exists")
+    para_hooks[name] = Hook()
+
+def del_para(name):
+    # todo: lock?
+    del para_hooks[name]
 
 def _log(e):
     if e.args.get('_block'):
         return
     L.debug("event: {}".format(e))
-    root_hook.invoke(e)
+    QUEUE.put(e)
 
 def log(path, **kwargs):
     _log(Event(path, kwargs))

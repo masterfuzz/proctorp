@@ -3,7 +3,7 @@ import colors
 import entity
 
 def u(uuid):
-    return entity.all_entities[uuid]
+    return entity.entities[uuid]
 
 pc = u(entity.player_uuid)
 

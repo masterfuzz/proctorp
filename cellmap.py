@@ -124,6 +124,9 @@ class Cell:
         self.terrain = None
         self.desc = ""
 
+    def get_dirs(self):
+        return self.neighbor.keys()
+
     def __str__(self):
         return '#'
 
@@ -153,96 +156,3 @@ class Cell:
             desc += " is here"
         return desc
 
-class SparseArray:
-    def __init__(self, default=None):
-        self._store = {}
-        self.default = default
-
-    def __getitem__(self, key):
-        if type(key) != int:
-            raise TypeError("Should be int")
-        return self._store.get(key, self.default)
-
-    def __setitem__(self, key, value):
-        if type(key) != int:
-            raise TypeError("Should be int")
-        self._store[key] = value
-
-    def to_list(self, min_index=None, max_index=None):
-        if min_index is None:
-            min_index = min(self._store.keys())
-        if max_index is None:
-            max_index = max(self._store.keys())
-        return [self._store.get(x, self.default) for x in range(min_index, max_index)]
-
-    def __contains__(self, key):
-        return key in self._store
-
-
-class SparseArray2D:
-    def __init__(self, default=None):
-        self._store = {}
-        self.default = default
-
-    def __contains__(self, key):
-        x, y = key
-        return x in self._store and y in self._store[y]
-
-    def __getitem__(self, key):
-        if type(key) == int:
-            if key in self._store:
-                return self._store[key]
-            else:
-                self._store[key] = SparseArray(self.default)
-                return self._store[key]
-
-        x, y = key
-        if x in self._store:
-            return self._store[x][y]
-        else:
-            return self.default
-
-    def __setitem__(self, key, value):
-        x, y = key
-        if x not in self._store:
-            self._store[x] = SparseArray(self.default)
-        self._store[x][y] = value
-
-class SparseArray3D:
-    def __init__(self, default=None):
-        self._store = {}
-        self.default = default
-
-    def __contains__(self, key):
-        x, y, z = key
-        return x in self._store and y in self._store[x] and z in self._store[x][y]
-
-    def __getitem__(self, key):
-        if type(key) == int:
-            if key in self._store:
-                return self._store[key]
-            else:
-                self._store[key] = SparseArray2D(self.default)
-                return self._store[key]
-
-        if len(key) == 2:
-            x, y = key
-            if x not in self._store:
-                self._store[x] = SparseArray2D(self.default)
-            return self._store[x][y]
-
-        x, y, z = key
-        if x in self._store:
-            return self._store[x][y][z]
-        else:
-            return self.default
-
-    def __setitem__(self, key, value):
-        x, y, z = key
-        if x not in self._store:
-            self._store[x] = SparseArray2D(self.default)
-        self._store[x][y][z] = value
-
-
-grid = SparseArray3D(0)
-m = Map()

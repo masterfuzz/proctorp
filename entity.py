@@ -2,12 +2,11 @@
 import event
 import uuid
 
-all_entities = {}
-player_uuid = None
+entities = {}
 
 def tags(e):
     if isinstance(e, uuid.UUID):
-        e = all_entities[e]
+        e = entities[e]
     return e.tags
 class Entity(object):
     def __init__(self, name="<Unknown>"):
@@ -15,7 +14,7 @@ class Entity(object):
         self.phys = True
         self.ai = False
         self.uuid = uuid.uuid1()
-        all_entities[self.uuid] = self
+        entities[self.uuid] = self
         self.pos = (0,0,0)
         self.tags = set((self.name.upper(),))
 
@@ -168,7 +167,7 @@ class Character(LeveledEntity):
         if self.dead:
             return
         # xp gain = level * 50
-        e = all_entities[k['sub']]
+        e = entities[k['sub']]
         self.gain_xp(e.lvl * 50)
 
     def drop_all(self):
@@ -308,5 +307,5 @@ class MOB(Character):
 
     def on_encounter(self, k):
         if not self.dead:
-            self.attack(player_uuid)
+            self.attack(k['sub'])
 

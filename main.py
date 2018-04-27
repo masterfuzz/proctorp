@@ -1,8 +1,9 @@
+import signal
 import cellmap
 import player
 import entity
 import event
-import colors
+import socket
 import logging as log
 #sh = logging.FileHandler("debug.log")
 log.basicConfig(format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
@@ -11,173 +12,63 @@ log.basicConfig(format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
                    )
 log.info("Started logger")
 
-
-colors.cprint("Loading map...\n")
-m = cellmap.Map()
-m.gen(10)
-
-pc = player.Player()
-#pc.level_up(5)
-pc.weapon = entity.Weapon("Super Sword").power(12035)
-pc.hp.val = 10000000
-entity.player_uuid = pc.uuid
-here = m.grid[pc.pos]
-colors.cprint("Done!\n")
-
 HOST = ''
 PORT = 5007
 
-def main():
-    import socket
-    import combat_log
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((HOST, PORT))
-    s.listen(1)
-    conn, addr = s.accept()
-    colors.write = conn.send
-    print 'Connected by', addr
-    combat_log.pc = pc
-    global here
-    while True:
-        here = m.grid[pc.pos]
-        #print(pc.pos)
-        #print(m.show2d(*pc.pos))
-        colors.cprint(here.look()+"\n")
-        dirs = list(m.get_dirs(*pc.pos))
-        names = map(lambda x: cellmap.dir_name(*x), dirs)
-        colors.cprint(", ".join(names)+"\n\n> ", color=colors.OKGREEN)
-        read_command(conn)
+class GameServer(object):
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((self.host, self.port))
+        self.clients = []
+        self.map = None
 
-def go(v):
-    dirs = list(m.get_dirs(*pc.pos))
-    choice = cellmap.d2n(v)
-    if choice in dirs:
-        pc.go_dir(choice)
-    else:
-        badcmd("can't go that way ({})\n".format(choice))
+    def load(self):
+        self.load_map()
+        event.start()
+        self.register_events()
 
-def get(v):
-    t = target(v, cls=entity.Item)
-    if t:
-        pc.get(t)
-        here.remove(t)
-        pcprint("You pick up {}\n".format(t))
-        event.log("player.action.get", sub=pc.uuid)
-    else:
-        if v:
-            badcmd("I don't see {} here\n".format(v))
-        else:
-            badcmd("There's nothing to get\n")
+    def register_events(self):
+        event.on("character.inventory.pickup")(self.pickup)
+        event.on("player.action")(self.main_ai)
+        event.on("character.inventory.drop")(self.dropped_item)
 
-def attack(v):
-    t = target(v, cls=entity.Character)
-    if t:
-        pc.attack(t)
-        event.log("player.action.attack", sub=pc.uuid)
-    else:
-        badcmd("I don't see '{}' here.\n".format(v))
+    def load_map(self):
+        log.info("Loading map...\n")
+        self.map = cellmap.Map()
+        self.map.gen(10)
+        log.info("Done!\n")
 
-def equip(v):
-    t = target(v, cls=entity.Weapon, inv=True)
-    if t:
-        pc.equip(t)
-        event.log("player.action.equip", sub=pc.uuid)
-    else:
-        badcmd("Equip what?\n")
+    def listen(self):
+        self.sock.listen(5)
+        while True:
+            client, addr = self.sock.accept()
+            client.settimeout(60)
+            #threading.Thread(target = self.listenToClient,args = (client,address)).start()
+            c = player.PlayerClient(client, addr)
+            self.clients.append(c)
+            c.start()
 
-def unequip(v):
-    if pc.weapon:
-        pc.unequip()
-        event.log("player.action.unequip", sub=pc.uuid)
-    else:
-        badcmd("You're not holding a weapon\n")
+    def pickup(self, k):
+        item = entity.ents[k['item']]
+        self.map.grid[k['pos']].remove(item)
+        entity.ents[k['sub']].get(item)
 
-def drop(v):
-    if pc.weapon and pc.weapon.name.upper() == v:
-        pc.unequip()
-    t = target(v, inv=True)
-    if t:
-        pc.drop(t)
-        event.log("player.action.drop", sub=pc.uuid)
-    else:
-        badcmd("Drop what?\n")
+    def main_ai(self,kwg):
+        # do encounters
+        pc = entity.entities[kwg['sub']]
+        ents = {e.uuid: True for e in self.map.grid[pc.pos].entities}
+        ents['sub'] = pc.uuid
+        event._log(event.Event("player.encounter", ents))
 
-def look_self(v):
-    pcprint(pc.look()+"\n")
+    def dropped_item(self,kwg):
+        self.map.grid[kwg['pos']].entities.append(kwg['item'])
 
-def look(v):
-    t = target(v)
-    if t:
-        pcprint(t.look()+"\n")
-    else:
-        badcmd("At what?\n")
 
-def target(name, cls=None, inv=None):
-    if inv:
-        loc = pc.inv
-    else:
-        loc = m.grid[pc.pos].entities
-    if cls:
-        ents = list(e for e in loc if isinstance(e, cls))
-    else:
-        ents = list(e for e in loc)
+signal.signal(signal.SIGINT, lambda x,y: event.log(".", kill=event.KILL))
+g = GameServer(HOST, PORT)
+g.load()
+g.listen()
 
-    if len(ents) == 0:
-        return False
-    elif len(ents) == 1:
-        return ents[0]
-    elif name:
-        for e in ents:
-            if name in e.name.upper():
-                return e
-        return False
-    else:
-        return False
-
-def pcprint(msg):
-    colors.cprint(msg, color=colors.OKBLUE)
-
-def badcmd(msg):
-    colors.cprint(msg, color=colors.WARNING)
-
-def cmdhelp(v):
-    msg = "Possible commands are:\n"
-    msg += "\n".join(commands.keys())
-    msg += "\n"
-    colors.cprint(msg, color=colors.WARNING)
-
-commands = {
-    'GO': go,
-    'GET': get,
-    'ATTACK': attack,
-    'SELF': look_self,
-    'LOOK': look,
-    'EQUIP': equip,
-    'DROP': drop,
-    'UNEQUIP': unequip,
-    'QUIT': quit,
-    'HELP': cmdhelp
-}
-
-def read_command(conn):
-    v = conn.recv(1024).strip().upper().split(' ', 1)
-    if v[0] in commands:
-        if len(v) > 1:
-            commands[v[0]](v[1:][0])
-        else:
-            commands[v[0]](None)
-    else:
-        badcmd("I don't understand that command.\nYou said: '{}'\n".format(v))
-
-@event.on("player.action")
-def main_ai(kwg):
-    # do encounters
-    ents = {e.uuid: True for e in m.grid[pc.pos].entities}
-    ents['sub'] = kwg['sub']
-    event._log(event.Event("player.encounter", ents))
-
-@event.on("character.inventory.drop")
-def dropped_item(kwg):
-    m.grid[kwg['pos']].entities.append(kwg['item'])
-
-main()
