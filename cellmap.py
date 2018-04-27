@@ -1,5 +1,4 @@
 import random
-import entities
 import logging
 L = logging.getLogger('map')
 L.addHandler(logging.NullHandler())
@@ -28,6 +27,7 @@ class Map:
             for n in self.get_dirs(*c.pos):
                 c.neighbor[n] = self.get_neighbor(*(c.pos+n))
 
+        import entities
         for e in entities.entities:
             c = random.choice(self.cells)
             L.debug("{} placed at {}".format(e, c.pos))
@@ -156,3 +156,4 @@ class Cell:
             desc += " is here"
         return desc
 
+nowhere = Cell()

@@ -112,16 +112,6 @@ def _log(e):
 def log(path, **kwargs):
     _log(Event(path, kwargs))
 
-#def test(msg):
-#    print(msg)
-#
-#subscribe("hello.world", test)
-#subscribe("hello", test)
-#subscribe("", test)
-#_log(Event("hello.world", {'some': 'message'}))
-#_log(Event("hello", {'some': 'other message'}))
-#_log(Event("", {'root', 'event'}))
-
 
 class trigger:
     def __init__(self, path):
@@ -134,7 +124,7 @@ class trigger:
         return wrap
 
 class on:
-    def __init__(self, path):
+    def __init__(self, path, para=None):
         self.path = path
     def __call__(self, f):
         subscribe(self.path, f)

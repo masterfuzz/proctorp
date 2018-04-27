@@ -1,6 +1,7 @@
 #import random
 import event
 import uuid
+import cellmap
 
 entities = {}
 
@@ -17,6 +18,7 @@ class Entity(object):
         entities[self.uuid] = self
         self.pos = (0,0,0)
         self.tags = set((self.name.upper(),))
+        self.cell = cellmap.nowhere
 
     def tag(self, tag):
         self.tags.add(tag.upper())

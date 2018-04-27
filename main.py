@@ -7,8 +7,8 @@ import socket
 import logging as log
 #sh = logging.FileHandler("debug.log")
 log.basicConfig(format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
-                    level=log.DEBUG,
-                    filename="debug.log",
+                    level=log.INFO
+#                    filename="debug.log",
                    )
 log.info("Started logger")
 
@@ -24,6 +24,7 @@ class GameServer(object):
         self.sock.bind((self.host, self.port))
         self.clients = []
         self.map = None
+        log.info("Server initialized")
 
     def load(self):
         self.load_map()
@@ -31,22 +32,39 @@ class GameServer(object):
         self.register_events()
 
     def register_events(self):
+        log.debug("Registering server events")
         event.on("character.inventory.pickup")(self.pickup)
         event.on("player.action")(self.main_ai)
         event.on("character.inventory.drop")(self.dropped_item)
+        event.on("login.request")(self.login_request)
+        event.on("player.quit")(self.player_quit)
+        log.info("Events registered")
+
+    def player_quit(self, k):
+        pass
+
+    def login_request(self, k):
+        para = k['client']
+        user = k['user']
+        new_pc = player.Player(name=user)
+        new_pc.cell = self.map.grid[(0,0,0)]
+        log.info("Login granted to {}".format(user))
+        event.log("login.granted", para=para, pc=new_pc.uuid)
 
     def load_map(self):
         log.info("Loading map...\n")
         self.map = cellmap.Map()
         self.map.gen(10)
-        log.info("Done!\n")
+        log.info("Map loaded\n")
 
     def listen(self):
         self.sock.listen(5)
+        log.info("Started listening")
         while True:
             client, addr = self.sock.accept()
             client.settimeout(60)
             #threading.Thread(target = self.listenToClient,args = (client,address)).start()
+            log.info("Client connected")
             c = player.PlayerClient(client, addr)
             self.clients.append(c)
             c.start()
